@@ -34,6 +34,26 @@ class Tiku(Base):
         session.add(self)
         session.commit()
 
+    def check_title_save(self):
+        # same question
+        if session.query(Tiku).filter(Tiku.title == self.title).first():
+            return
+        session.add(self)
+        session.commit()
+
+    def update_title_save(self):
+        item = session.query(Tiku).filter(Tiku.title == self.title).first()
+        if item:
+            item.type = self.type
+            item.choice = self.choice
+            item.answer = self.answer
+            session.add(item)
+            session.commit()
+        else:
+            print("add:", self.type, self.title, self.choice, self.answer)
+            session.add(self)
+            session.commit()
+
     def delete(self):
         session.delete(self)
         session.commit()
@@ -51,30 +71,6 @@ def readTxt2Arr(name):
     rawtxt = re.sub(r'[\\n]+', "\n", rawtxt)
     arryTxt = rawtxt.replace('\xa0', '').replace('\uf0b7', '').replace('\ue60f', '').replace('\ue6e2', '').split('\n')
     return arryTxt
-
-
-tiku1 = readTxt2Arr('tiku1.txt')
-
-questionRe = {
-    'dan': re.compile(r'单选题'),
-    'duo': re.compile(r'多选题'),
-    'pan': re.compile(r'判断题'),
-    'tian': re.compile(r'填空题')
-}
-
-# 到下一题的间隔
-spacing = {
-    'dan': 7,  # 默认4个选项
-    'duo': 7,  # 默认4个选项
-    'pan': 5,  # 默认2个选项
-    'tian': 7  # 默认2个选项
-}
-reQuestion = re.compile(r'\d{0,3}[.、【]*(.*?)[】*](.*)')
-reOptMarker = re.compile(r'[A-G]+')
-reOptoneMarker = re.compile(r'^[A-G][\s\.．、,，]?')
-
-index = 0
-length = len(tiku1)
 
 
 def reapaire(index):
@@ -119,9 +115,6 @@ def reapaire(index):
     return index
 
 
-print(length)
-
-
 def main(index):
     while index < length:
         print(index)
@@ -146,7 +139,7 @@ def main(index):
                 index = index + spacing['dan']
                 index = reapaire(index)
                 tiku_item = Tiku(title=title, type=type, choice=choice, answer=answer)
-                tiku_item.save()
+                tiku_item.check_title_save()
             except AttributeError as e:
                 print(e, traceback.print_exc())
                 print(tiku1[answerIndex])
@@ -161,7 +154,7 @@ def main(index):
                 index = index + spacing['duo']
                 index = reapaire(index)
                 tiku_item = Tiku(title=title, type=type, choice=choice, answer=answer)
-                tiku_item.save()
+                tiku_item.check_title_save()
             except AttributeError as e:
                 print(e, traceback.print_exc())
                 print(tiku1[answerIndex])
@@ -175,7 +168,7 @@ def main(index):
             index = index + spacing['pan']
             index = reapaire(index)
             tiku_item = Tiku(title=title, type=type, choice=choice, answer=answer)
-            tiku_item.save()
+            tiku_item.check_title_save()
 
         # 填空
         elif re.search(questionRe['tian'], question):
@@ -184,9 +177,34 @@ def main(index):
             index = index + spacing['tian']
             index = reapaire(index)
             tiku_item = Tiku(title=title, type=type, choice=choice, answer=answer)
-            tiku_item.save()
+            tiku_item.check_title_save()
 
 
 if __name__ == '__main__':
     Base.metadata.create_all(engine, checkfirst=True)
+
+    tiku1 = readTxt2Arr('tiku1.txt')
+
+    questionRe = {
+        'dan': re.compile(r'单选题'),
+        'duo': re.compile(r'多选题'),
+        'pan': re.compile(r'判断题'),
+        'tian': re.compile(r'填空题')
+    }
+
+    # 到下一题的间隔
+    spacing = {
+        'dan': 7,  # 默认4个选项
+        'duo': 7,  # 默认4个选项
+        'pan': 5,  # 默认2个选项
+        'tian': 7  # 默认2个选项
+    }
+    reQuestion = re.compile(r'\d{0,3}[.、【]*(.*?)[】*](.*)')
+    reOptMarker = re.compile(r'[A-G]+')
+    reOptoneMarker = re.compile(r'^[A-G][\s\.．、,，]?')
+
+    index = 0
+    length = len(tiku1)
+
+    print(length)
     main(index)
