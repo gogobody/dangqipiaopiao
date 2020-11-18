@@ -17,7 +17,7 @@ s = requests.session()
 headers = {
     'Cache-Control': 'max-age=0',
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36',
-    'cookie': 'first_lesson_study=1; _xsrf=2|51a33b4c|4c6c16357f41cb93b652c33610896199|1604987833; not_pwd="2|1:0|10:1605249698|7:not_pwd|4:MA==|88db36b0ac5e1229bd6bdc8c8b28c4cb87e08a078fec0d361e52522ec204db7d"; menu_open=false; u_id="2|1:0|10:1605349111|4:u_id|548:eyJ1c2VyX2lkIjogMzk3NywgInN0YXRlIjogMSwgInVzZXJfc2lkIjogIjIwMTkxNDAyMDM1dCIsICJ1c2VyX25hbWUiOiAiXHU3MzhiXHU3ZWFjXHU3NTY1IiwgInVzZXJfcHdkIjogIjY0NzJiMWQwOWU1N2ExNGM2ODY2YzJmMzk4MTA2ZTk5OTc5ZGQ0YzMiLCAicGhhc2UiOiAyLCAiYXZhdGFyIjogbnVsbCwgInRydWVfYXZhdGFyIjogIi9zdGF0aWMvdXBsb2FkL2ltYWdlcy8yMDIwLTEwLTI4LzNmNTAyOTFmNTI5ZWVmM2EwZTgyNDBhOTc3YjY3NDE3LmpwZyIsICJzdGFnZV9pZCI6IDUsICJzdGFnZV9jbGFzc19pZCI6IDUyLCAicGFydHlfYnJhbmNoIjogIiIsICJ0b2tlbiI6IDE2MDUzNDkwOTAsICJ1c2VyX3R5cGUiOiAxLCAic2Vzc2lvbiI6ICJmNjk1NDVlNC0xZjA4LTQ5ZjItYjQ3Yy05OTFhOWI1ZjhiZjUifQ==|aaf5464b5e2a5ef3174e59a0b2062657bb5b14cbb5a52b7a6e2058b5ae5e660b"',
+    'cookie': '',
     'If-None-Match': 'W/"c843fec5e75e01be37eceeb27ee649de88c1d29f"',
     'Host': 'cqu.dangqipiaopiao.com',
     'Upgrade-Insecure-Requests': '1',
@@ -36,8 +36,12 @@ def update_session(session):
     print(res.text)
 
 
-def get_lesson_xsrf_token(lseeion_id):
-    html = s.get("http://cqu.dangqipiaopiao.com/jjfz/lesson/exam?lesson_id=" + str(lseeion_id)).text
+def get_lesson_xsrf_token(lseeion_id, exam_center = False):
+    if exam_center:
+        html = s.get("http://cqu.dangqipiaopiao.com/jjfz/exam_center/end_exam").text
+    else:
+        html = s.get("http://cqu.dangqipiaopiao.com/jjfz/lesson/exam?lesson_id=" + str(lseeion_id)).text
+
     xsrf_tree = etree.HTML(html)
     xsrf = ''.join(xsrf_tree.xpath('//input[@name="_xsrf"]/@value'))
     return xsrf
@@ -61,11 +65,15 @@ def logout_lesson_self_test(lid):
     return 0
 
 
-def get_questions(lid, num=20):
+def get_questions(lid, num=20, exam_center=False):
     questions_all = []
     for i in range(1, num + 1):
         params = {'i': i, 'lid': lid}
-        test = s.get("http://cqu.dangqipiaopiao.com/jjfz/lesson/exam/get_question", params=params)
+        if exam_center:
+            test = s.get("http://cqu.dangqipiaopiao.com/jjfz/exam_center/get_question?i=2", params={"i": i})
+        else:
+            test = s.get("http://cqu.dangqipiaopiao.com/jjfz/lesson/exam/get_question", params=params)
+
         if test.status_code == 200 or test.status_code == 304:
             html = test.text
             tree = etree.HTML(html)
@@ -122,7 +130,7 @@ def parse_answer2index(answer):
     return res
 
 
-def answer_questions(index, lid, qid, answer, xsrf):
+def answer_questions(index, lid, qid, answer, xsrf, exam_center=False):
     dat = {
         'i': index,
         'lid': lid,
@@ -130,15 +138,18 @@ def answer_questions(index, lid, qid, answer, xsrf):
         'answer': answer,
         '_xsrf': xsrf
     }
-    answer = s.post('http://cqu.dangqipiaopiao.com/jjfz/lesson/exam/answer?i=1', data=dat)
+    if exam_center:
+        answer = s.post('http://cqu.dangqipiaopiao.com/jjfz/exam_center/answer?i='+str(index), data=dat)
+    else:
+        answer = s.post('http://cqu.dangqipiaopiao.com/jjfz/lesson/exam/answer?i='+str(index), data=dat)
     # print(answer.status_code, answer.text)
 
 
 # 开始做题
-def start_exam(lid, s, xsrf):
+def start_exam(lid, s, xsrf, num=20, exam_center=False):
     rQpattern1 = re.compile(r'\d{0,3}[. ]{0,3}(.*?)[(（]+')
     # print(xsrf)
-    questions = get_questions(lid, 20)
+    questions = get_questions(lid, num, exam_center)
     time.sleep(1)
     # print(questions)
     for index, q in enumerate(questions):
@@ -155,13 +166,13 @@ def start_exam(lid, s, xsrf):
             # print(res.answer, answer_index)
             print("正在答题:", index + 1)
             answ = '|'.join([q['amswers'][ai] for ai in answer_index])
-            answer_questions(index + 1, lid, q['qids'][0], answ, xsrf)
+            answer_questions(index + 1, lid, q['qids'][0], answ, xsrf, exam_center)
             time.sleep(1)
         else:
             print("index: {0} unknown q: ".format(index + 1), q)
             print('|'.join(q['choice']))
             # 全部 蒙 A
-            answer_questions(index + 1, lid, q['qids'][0], q['amswers'][0], xsrf)
+            answer_questions(index + 1, lid, q['qids'][0], q['amswers'][0], xsrf, exam_center)
             time.sleep(10)
 
 
@@ -194,6 +205,14 @@ def add2tiku(url):
         title = ''.join(it.xpath('div[1]/h3/text()')).replace('\xa0', '').replace('\uf0b7', '').replace('\ue60f',
                                                                                                         '').replace(
             '\ue6e2', '').replace('\\n', '').replace('\n', '').replace('\t', '').replace(' ', '')
+        type = re.search(reQuestion, title).group(1)
+        if type == "填空题":
+            answer = ''.join(it.xpath('div[2]/div[1]/div[1]/text()'))
+            question = re.search(reQuestion, title).group(2)
+            tiku_item = Tiku(title=question, type=type, choice=answer, answer=answer)
+            tiku_item.update_title_save()
+            continue
+
         choices_ele = it.xpath('div[2]/ul/li')
         choices = []
         for c in choices_ele:
@@ -201,13 +220,13 @@ def add2tiku(url):
                 ' ', '')
             if choice:
                 choices.append(choice)
-        answer = ''.join(it.xpath('div[3]/span/text()'))
-        if answer:
-            answer = re.search(reOptMarker, answer).group()
-            type = re.search(reQuestion, title).group(1)
-            question = re.search(reQuestion, title).group(2)
-            tiku_item = Tiku(title=question, type=type, choice='|'.join(choices), answer=answer)
-            tiku_item.update_title_save()
+        else:
+            answer = ''.join(it.xpath('div[3]/span/text()'))
+            if answer:
+                answer = re.search(reOptMarker, answer).group()
+                question = re.search(reQuestion, title).group(2)
+                tiku_item = Tiku(title=question, type=type, choice='|'.join(choices), answer=answer)
+                tiku_item.update_title_save()
     print("finished")
 
 
@@ -216,20 +235,26 @@ if __name__ == '__main__':
     # start_lesson_self_test(495)
     base_url = "http://cqu.dangqipiaopiao.com"
     s = update_session(s)
-    lid = 495
-    xsrf = get_lesson_xsrf_token(lid)
-    for lid in range(495, 506):
-        # 开始自测
-        start_lesson_self_test(lid)
-        time.sleep(1)
-        # 开始做题
-        start_exam(lid, s, xsrf)
-        time.sleep(1)
-        # 交卷
-        submit(lid, s, xsrf)
-        # 查看结果
-        rlink = get_result(lid, s)
-        detail_link = base_url + rlink
-        print(detail_link)
-        time.sleep(1)
-        add2tiku(detail_link)
+    # lid = 495
+    # xsrf = get_lesson_xsrf_token(lid)
+    # for lid in range(495, 506):
+    #     # 开始自测
+    #     start_lesson_self_test(lid)
+    #     time.sleep(1)
+    #     # 开始做题
+    #     start_exam(lid, s, xsrf)
+    #     time.sleep(1)
+    #     # 交卷
+    #     submit(lid, s, xsrf)
+    #     # 查看结果
+    #     rlink = get_result(lid, s)
+    #     detail_link = base_url + rlink
+    #     print(detail_link)
+    #     time.sleep(1)
+    #     add2tiku(detail_link)
+
+    # exam_center
+    # lid = 1
+    # xsrf = get_lesson_xsrf_token(lid,exam_center=True)
+    # start_exam(lid, s, xsrf, num=80 ,exam_center=True)
+    # add2tiku("http://cqu.dangqipiaopiao.com/jjfz/exam_center/end_show?rid=41974")
