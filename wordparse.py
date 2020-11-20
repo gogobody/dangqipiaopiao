@@ -8,7 +8,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import event
 
 # engine = create_engine('sqlite:///tiku.sqlite?check_same_thread=False', echo=False)  # false 不打印 sql 语句
-engine = create_engine("mysql+pymysql://root:814976@localhost:3306/tiku",
+mysqlname =''
+password =''
+engine = create_engine("mysql+pymysql:{0}:{1}//@localhost:3306/tiku".format(mysqlname,password),
                        encoding="utf-8", echo=False)
 Session = sessionmaker(bind=engine)
 session = Session()

@@ -4,21 +4,23 @@ import requests
 from lxml import etree
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, and_
-from wordparse import Tiku
+from wordparse import Tiku ,mysqlname ,password
 import time
 
-engine = create_engine("mysql+pymysql://root:814976@localhost:3306/tiku",
+engine = create_engine("mysql+pymysql:{0}:{1}//@localhost:3306/tiku".format(mysqlname,password),
                        encoding="utf-8", echo=False)
 DbSession = sessionmaker(bind=engine)
 db_session = DbSession()
 
 s = requests.session()
 
+cookie = ''
+ifnonematch = ''
 headers = {
     'Cache-Control': 'max-age=0',
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36',
-    'cookie': '',
-    'If-None-Match': 'W/"c843fec5e75e01be37eceeb27ee649de88c1d29f"',
+    'cookie': cookie,
+    'If-None-Match': ifnonematch,
     'Host': 'cqu.dangqipiaopiao.com',
     'Upgrade-Insecure-Requests': '1',
     'Proxy-Connection': 'keep-alive'
@@ -235,6 +237,7 @@ if __name__ == '__main__':
     # start_lesson_self_test(495)
     base_url = "http://cqu.dangqipiaopiao.com"
     s = update_session(s)
+    # 单元自测
     # lid = 495
     # xsrf = get_lesson_xsrf_token(lid)
     # for lid in range(495, 506):
@@ -253,6 +256,7 @@ if __name__ == '__main__':
     #     time.sleep(1)
     #     add2tiku(detail_link)
 
+    # 考试中心综合检测
     # exam_center
     # lid = 1
     # xsrf = get_lesson_xsrf_token(lid,exam_center=True)
